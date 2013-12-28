@@ -180,6 +180,10 @@ class YandexMondeyAPI {
 			'illegal_param_from' => 'Неверное значение параметра from.',
 			'illegal_param_till' => 'Неверное значение параметра till.',
 			'illegal_param_operation_id' => 'Неверное значение параметра operation_id.',
+			'illegal_params' => 'Обязательные параметры платежа отсутствуют или имеют недопустимые значения.',
+			'phone_unknown' => 'Указан номер телефона не связанный со счетом пользователя или получателя платежа.',
+			'payment_refused' => 'Магазин отказал в приеме платежа.',
+			'limit_exceeded' => 'Превышен лимит на операции',
 			);
 		if (!array_key_exists($code, $errors))
 			return 'Техническая ошибка, повторите вызов операции позднее.';
@@ -214,5 +218,51 @@ class YandexMondeyAPI {
 		$params = array('operation_id' => $operation_id);
 		return $this->send_request('operation-details', $params);
 	}
+
+	/************************************************************
+	**Создание платежа, проверка параметров и 
+	**возможности приема платежа магазином, либо перевода средств
+	**на счет пользователя Яндекс.Денег.
+	***********************************************************/
+
+	/*
+	request_payment_to_user - перевод средств на счета других пользователей 
+	*/
+	public function request_payment_to_user($pattern_id = null, $to = null, $params = array()) {
+		if (!$pattern_id || !$to)
+			throw new Exception($this->get_error('illegal_params'));
+		if (!$amount || !$amount_due)
+			throw new Exception($this->get_error('illegal_params'));
+		if (array_key_exists('label', $params))
+			throw new Exception($this->get_error('illegal_param_label'));
+		$req = array('pattern_id' => $pattern_id, 'to' => $to);
+		$params = array_merge($req, $params);
+		return $this->send_request('request-payment', $params);
+	}
+
+	/*
+	request_payment_mobile - платеж за сотовую связь
+	*/
+	public function request_payment_mobile($pattern_id = null, $phone_number = null) {
+		if (!$pattern_id)
+			throw new Exception($this->get_error('illegal_params'));
+		if (!$phone_number)
+			throw new Exception($this->get_error('illegal_params'));
+		$params = array('pattern_id' => $pattern_id, 'phone_number' => $phone_number);
+		return $this->send_request('request-payment', $params);
+	}
+
+	/*
+	request_payment_test - тестовый платеж
+	*/
+	public function request_payment_test($test_card = null, $test_result = success) {
+		$req = array('test_payment' => true);
+		$params = array_merge($req, 'test_result' => $test_result);
+		if (!is_null($test_card))
+			$params = array_merge($params, array('test_card' => $test_card));
+		return $this->send_request('request-payment', $params);
+	}
+
+
 
 }
